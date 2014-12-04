@@ -5,3 +5,4 @@ system
 add two line to .bashrc
 	export PATH=/usr/local/bin/wra8-uclibc_small/x86-linux2:$PATH
 	export PATH=/usr/local/bin/wra8-uclibc_small/bin/:$PATH
+3,Add image for test
