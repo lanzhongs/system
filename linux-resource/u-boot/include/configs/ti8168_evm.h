@@ -111,7 +111,7 @@
 /* Undef to save memory */
 #define CONFIG_SYS_LONGHELP
 /* Monitor Command Prompt */
-#define CONFIG_SYS_PROMPT		"CYIT #"
+#define CONFIG_SYS_PROMPT		"LZHO #"
 
 /* Console I/O Buffer Size */
 #define CONFIG_SYS_CBSIZE		512

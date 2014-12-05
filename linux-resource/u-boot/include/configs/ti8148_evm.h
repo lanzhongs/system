@@ -46,7 +46,7 @@
  */ 
 # define CONFIG_ENV_SIZE		0x400
 # define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (8 * 1024))
-# define CONFIG_SYS_PROMPT		"CYIT-MIN#"
+# define CONFIG_SYS_PROMPT		"LZHO-MIN#"
 /* set to negative value for no autoboot */
 # define CONFIG_BOOTDELAY		1
 #  define CONFIG_SPI			1
@@ -64,7 +64,7 @@
 # define CONFIG_SYS_MALLOC_LEN		0x4000000
 # define CONFIG_ENV_OVERWRITE
 # define CONFIG_SYS_LONGHELP
-# define CONFIG_SYS_PROMPT		"CYIT #"
+# define CONFIG_SYS_PROMPT		"LZHO #"
 # define CONFIG_SYS_HUSH_PARSER		/* Use HUSH parser to allow command parsing */
 # define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 # define CONFIG_CMDLINE_TAG        	1	/* enable passing of ATAGs  */

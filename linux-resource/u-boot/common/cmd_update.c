@@ -7,10 +7,10 @@
 #include <nand.h>
 #include <spi_flash.h>
 
-#define UPFILE_NAME           "ldfirm.upg"
+#define UPFILE_NAME           "lzhfirm.upg"
 #define MAX_FILE_NUM          32
 #define PAGE_SIZE		    	4096		/* 4KB */
-#define CFG_MAGIC          	0x43594954  /*CYIT */
+#define CFG_MAGIC          	0x43594954  
 #define RESERVED_FEA_NUMS	    16
 #define JFFS2_IMG_ADDR		0x82000000
 
@@ -56,55 +56,6 @@ typedef struct {/* 64 bytes */
 #define IGNORE_VALUE8			0xff
 
 
-/* 系统信息 */
-typedef struct {/* 256 bytes */
-/* 0  */unsigned int 	    magicNumber;		                    /* 幻数 */
-/* 4  */unsigned int	    paraChecksum;	                        /* 检查和 */
-/* 8  */unsigned int	    paraLength;		                    /* 结构长度 */	/* 检查和、长度从'encryptVer'开始计算 */
-/* 12 */unsigned int	    encryptVer;							/* 加密版本:用于控制此结构的更改 */
-
-/* 以下4项用户升级控制:必须与升级文件包中的内容一致 */
-
-/* 16 */unsigned int		language;								/* 语言 */
-/* 20 */unsigned int		device_class;							/* 产品类型, 1 -- DS9000 DVR, ... */
-/* 24 */unsigned int		oemCode;								/* oem 代码: 1 -- hikvision自己, ... */
-/* 28 */unsigned char		reservedFeature[RESERVED_FEA_NUMS];	/* 保留的产品特性，用于升级控制 */
-
-/* 44 */unsigned short 	    encodeChans;		                    /* 编码路数 */
-/* 46 */unsigned short 	    decodeChans;		                    /* 解码路数 */
-/* 48 */unsigned short		ipcChans;								/* IPC通道数 */
-/* 50 */unsigned short		ivsChans;								/* 智能通道数 */
-/* 52 */unsigned char	    picFormat;			                    /* 编码最大分辨率 0--CIF, 1--2CIF, 2--4CIF */
-/* 53 */unsigned char 	    macAddr[MAX_ETHERNET][MACADDR_LEN];	/* 物理地址 */
-/* 65 */unsigned char 	    prodDate[PRODDATELEN];	                /* 生产日期 */
-/* 73 */unsigned char 	    prodNo[PRODNUMLEN];		            /* 产品序号 */
-/* 82 */unsigned char 	    devHigh;			                    /* 高度 1--1U, 2--2U                     */
-/* 83 */unsigned char 	    cpuFreq;			                    /* ARM主频: 1--400Mhz, 2--500Mhz ..      */
-/* 84 */unsigned char 	    dspFreq;			                    /* DSP主频: 1--700Mhz, 2--900Mhz ..      */
-/* 85 */unsigned char 	    zone;				                    /* 销售地区: 1--大陆 2--港台 3--海外 ... */
-/* 86 */unsigned char	    webSupport;			                /* 支持WEB */
-/* 87 */unsigned char 	    voipSupport;		                    /* 支持VOIP */
-/* 88 */unsigned char 	    usbNums;			                    /* USB个数: 0、1、2 */
-/* 89 */unsigned char 	    lcdSupport;			                /* 支持LCD */
-/* 90 */unsigned char	    voNums;			                    /* 本地VO个数: 0、1、2 */
-/* 91 */unsigned char 	    vganums;			                    /* VGA个数: 0、1、2 */
-/* 92 */unsigned char 	    vtSupport;			                    /* 支持语音对讲  */
-/* 93 */unsigned char		videoMaxtrix;							/* 视频矩阵输出: 0 -- 无，1 -- 16进4出 ... */
-/* 94 */unsigned char 	    extendedDecoder;						/* 多路解码扩展板 */
-/* 95 */unsigned char 	    extendedIVS;							/* 智能视频分析扩展板 */
-/* 96 */unsigned char 	    extendedAlarmOut;						/* 报警输出扩展板 */
-		unsigned char		res1[3];
-/*100 */unsigned short	    devType;			                    /* 设备型号，2个字节 */
-		unsigned char		res2[2];
-/*104 */unsigned int        ubootAdrs;			                    /* uboot存放flash地址       */
-/*108 */unsigned int        ubootSize;                             /* uboot大小                */
-/*112 */unsigned int        ubootCheckSum;		                /* uboot校验值              */
-/*116 */unsigned int        tinyKernelAdrs;		                /* tinyKernel存放flash地址  */
-/*120 */unsigned int        tinyKernelSize;                       /* tinyKernel大小           */
-/*124 */unsigned int        tinyKernelCheckSum;	                /* tinyKernel校验值         */
-/*128 */unsigned char	    devModel[64];		                    /* 产品型号:考虑国标型号，扩充到64字节 */
-/*192 */unsigned char	    res3[64];
-} BOOT_PARMS;
 /*--------------------------------------------------------------------------------------------------*/
 
 struct mtd_partition {
@@ -300,7 +251,6 @@ int do_nand_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int ftpsize, header_len, header_checksum;
 	UPGRADE_FILE_HEADER *uheader;
 	FIRMWARE_HEADER dst_fheader, *fheader, *pheader = NULL;
-	BOOT_PARMS bp;
 	
 	int  i,k, ret, offset = 0;
 	u_int start_addr, len, pre_size;
@@ -366,8 +316,6 @@ int do_nand_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	if(0 == is_find) {
-		printf("The board info: language - 0x%X device_class - 0x%X oemCode - 0x%X\n", 
-			bp.language, bp.device_class, bp.oemCode);
 		printf("upgrade packet mismatch, please select correct packet\n");
 		return -1;
 	}
