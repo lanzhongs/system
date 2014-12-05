@@ -62,8 +62,8 @@ static void setup_bootargs(char *cmdline)
 		strcat(cmdline,nfspath);
 		strcat(cmdline,",nolock ");
 	} else {
-		sprintf(args," root=/dev/ram initrd=0x%x,1 ",PHYS_DRAM_1);
-		strcat(cmdline,args);
+		//sprintf(args," root=/dev/ram initrd=0x%x,1 ",PHYS_DRAM_1);
+		//strcat(cmdline,args);
 	}
 	
 	/* fix "mem=" params */
@@ -86,19 +86,6 @@ static void setup_bootargs(char *cmdline)
 		} else {
 			strcat(args,MKSTR(CONFIG_NETMASK));
 		}
-		strcat(cmdline,args);
-	}
-
-	/* fix "eth=" params */	
-	p = strstr(cmdline,"eth=");
-	if(!p) {
-		sprintf(args," eth=%s",getenv("ethaddr"));
-		strcat(cmdline,args);
-	}
-		
-	if(g_spi_boot) {
-		extern int g_boot_part;
-		sprintf(args," bootmode=%d",g_boot_part);
 		strcat(cmdline,args);
 	}
 	

@@ -171,6 +171,8 @@
 # define CONFIG_YAFFS2
 # define CONFIG_CMD_NAND
 # define CONFIG_NAND_TI81XX
+# define CONFIG_BCH
+# define CONFIG_MTD_NAND_BCH
 # define CONFIG_MTD_NAND_ECC_BCH
 # define GPMC_NAND_ECC_LP_x16_LAYOUT	1
 # define NAND_BASE			(0x08000000)	/* FIXME not sure */

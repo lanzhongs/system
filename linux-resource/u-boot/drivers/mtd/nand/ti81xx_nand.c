@@ -984,13 +984,13 @@ int board_nand_init(struct nand_chip *nand)
 	 * ti81xx_nand_switch_ecc() below to 1-bit h/w ecc
 	 */
 	nand->priv = &bch_priv;
-	nand->ecc.mode = NAND_ECC_SOFT;
+	nand->ecc.mode = NAND_ECC_SOFT_BCH;
 
 	/* required in case of BCH */
 	elm_init();
 
-	nand_curr_device = 0;
-	ti81xx_nand_switch_ecc(NAND_ECC_SOFT, 2);
+	//nand_curr_device = 0;
+	//ti81xx_nand_switch_ecc(NAND_ECC_SOFT, 2);
 
 	return 0;
 }
