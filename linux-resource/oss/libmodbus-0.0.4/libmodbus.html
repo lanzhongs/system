@@ -1,0 +1,413 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+	<TITLE>Programming the LibModbus</TITLE>
+	<META NAME="GENERATOR" CONTENT="StarOffice/5.1 (Linux)">
+	<META NAME="AUTHOR" CONTENT="Laurent LOPES">
+	<META NAME="CREATED" CONTENT="20010508;23245200">
+	<META NAME="CHANGEDBY" CONTENT="Laurent LOPES">
+	<META NAME="CHANGED" CONTENT="20010509;23395400">
+</HEAD>
+<BODY BGCOLOR="#ffffff">
+<P ALIGN=CENTER STYLE="margin-top: 0.42cm; page-break-after: avoid"><FONT COLOR="#0000ff"><FONT FACE="times, serif"><FONT SIZE=7 STYLE="font-size: 32pt"><B>Programming
+the LibModbus</B></FONT></FONT></FONT></P>
+<PRE STYLE="margin-bottom: 0.5cm; text-align: left">
+<FONT FACE="times, serif"><FONT SIZE=4>May, 09  2001</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Table of content :</FONT></FONT></PRE>
+<OL>
+	<LI><P STYLE="margin-bottom: 0cm"><A HREF="#1"><FONT SIZE=4>Open &amp;
+	Close</FONT></A></P>
+	<LI><P STYLE="margin-bottom: 0cm"><A HREF="#2"><FONT SIZE=4>Master</FONT></A></P>
+	<LI><P STYLE="margin-bottom: 0cm"><A HREF="#3"><FONT SIZE=4>Slave</FONT></A></P>
+	<LI><P STYLE="margin-bottom: 0cm"><A HREF="#4"><FONT SIZE=4>Misc</FONT></A></P>
+	<LI><P STYLE="margin-bottom: 0cm"><A HREF="#5"><FONT SIZE=4>Author</FONT></A></P>
+</OL>
+<PRE>
+
+<A NAME="1"></A><FONT COLOR="#dc2300"><FONT FACE="times, serif"><FONT SIZE=6 STYLE="font-size: 28pt"><B>1. Open &amp; Close</B></FONT></FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Before using master and slave functions you need to initialise the serial port with the function :</FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>        int Mb_open_device(char device[],</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int speed,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int parity,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int data_bits_length,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int stop_bits_length);</FONT></FONT></PRE>
+<TABLE WIDTH=1137 BORDER=1 CELLPADDING=4 CELLSPACING=3>
+	<COL WIDTH=253>
+	<COL WIDTH=857>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>device</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>string who contain the device to open : /dev/ttyS0 for COM1, /dev/ttyS1 for COM2, etc</FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>speed</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<P><FONT FACE="times, serif"><FONT SIZE=4>indicate the speed in
+				baud rate. Each values are : 50, 75, 110, 134, 150, 200, 300,
+				600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200,
+				230400. If you set another value, the function use automatically
+				9600 bauds.</FONT></FONT></P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>parity</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>the parity off the frame :</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4> 0 indicate don't use parity, </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>1 indicate EVEN parity</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>-1 indicate ODD parity.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>data_bits_length</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>length of the data bits. You can set 7 or   8 bits but in modbus RTU mode only 8 bits work.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>data_bits_stop</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate how many bits to send at the end of the frame. You can set 1 or 2 bits.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE>
+<FONT FACE="times, serif"><FONT SIZE=4>The serial port is open in bidirectional asynchronous mode. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4><FONT FACE="courier, monospace">Mb_open_device()</FONT> save oldest parameters of the serial port to restore them when dial is terminate.</FONT></FONT>
+
+
+<FONT FACE="times, serif"><FONT SIZE=4>For more information about serial port configuration please read man pages : </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>man 2 open, man 2 read, man 2 write and the serial programming HOWTO.</FONT></FONT>
+
+
+<FONT FACE="times, serif"><FONT SIZE=4>At the end of your program you can close and restore the oldest parameters with :</FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>        void Mb_close_device(int device);</FONT></FONT>
+
+
+
+<FONT FACE="times, serif"><FONT SIZE=4><FONT FACE="courier, monospace">device </FONT>indicate the device descriptor returned by the <FONT FACE="courier, monospace">Mb_open_device()</FONT> function.</FONT></FONT>
+
+
+
+<A NAME="2"></A><FONT COLOR="#dc2300"><FONT FACE="times, serif"><FONT SIZE=6 STYLE="font-size: 28pt"><B>2. Master</B></FONT></FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Before send a packet you need to configure it. There is a struct made for it : <FONT FACE="courier, monospace">Mbm_trame</FONT>. The declaration of the Mbm_trame is declared as below :</FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>                struct {</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int device;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int slave;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int function;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int address;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int length;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                        int timeout;</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                } Mbm_trame;</FONT></FONT></PRE>
+<TABLE WIDTH=1137 BORDER=1 CELLPADDING=4 CELLSPACING=3>
+	<COL WIDTH=253>
+	<COL WIDTH=857>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>device</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate the device descriptor returned by <FONT FACE="courier, monospace">Mb_open_device().</FONT></FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>slave</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate the slave to call.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>function</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate the function to send.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>address</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate the address for functions 0x03, 0x04, 0x06, 0x0a. For 0x07 and 0x08 functions, this value isn't use.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=253>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>length</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=857>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate how many data to read or to write to the slave. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>This setting is only use for 0x03, 0x04, 0x0a modbus functions.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE>
+
+<FONT FACE="times, serif"><FONT SIZE=4>When <FONT FACE="courier, monospace">Mbm_trame </FONT>done, you can call send the request with </FONT></FONT>
+
+<FONT COLOR="#000000"><FONT FACE="courier, monospace"><FONT SIZE=4>        int Mb_master(Mbm_trame packet,</FONT></FONT></FONT>
+<FONT COLOR="#000000"><FONT FACE="courier, monospace"><FONT SIZE=4>                int data_in[],</FONT></FONT></FONT>
+<FONT COLOR="#000000"><FONT FACE="courier, monospace"><FONT SIZE=4>                int data_out[],</FONT></FONT></FONT>
+<FONT COLOR="#000000"><FONT FACE="courier, monospace"><FONT SIZE=4>                void *ptr_function_send,</FONT></FONT></FONT>
+<FONT COLOR="#000000"><FONT FACE="courier, monospace"><FONT SIZE=4>                void *ptr_function_receive);</FONT></FONT></FONT></PRE>
+<TABLE WIDTH=1127 BORDER=1 CELLPADDING=4 CELLSPACING=3>
+	<COL WIDTH=252>
+	<COL WIDTH=848>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=252>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>packet</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=848>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>the struct <FONT FACE="courier, monospace">Mbm_trame</FONT> set above</FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=252>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>data_in[]</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=848>
+				<P STYLE="margin-bottom: 0cm"><FONT FACE="times, serif"><FONT SIZE=4>data
+				to send for writing functions. </FONT></FONT>
+				</P>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>Modbus function 0x06 (send one byte) send only <FONT FACE="courier, monospace">data_in[0]</FONT>.</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>Modbus function 0x0a (send n bytes) send from <FONT FACE="courier, monospace">data_in[0] </FONT>to <FONT FACE="courier, monospace">data_in[packet.length-1]</FONT> byte.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=252>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>data_out[]</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=848>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>data answered by the slave on reading function like 0x03, 0x04,0x07. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>In 0x03 and 0x04 modbus functions data read are stored from <FONT FACE="courier, monospace">data_out[0]</FONT> to </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4><FONT FACE="courier, monospace">data_out[packet.length-1]</FONT> byte.</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>For the 0x07 function the slave statue is stored in <FONT FACE="courier, monospace">data_out[0].</FONT></FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=252>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>ptr_function_send</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=848>
+				<P STYLE="margin-bottom: 0cm"><FONT FACE="times, serif"><FONT SIZE=4>function
+				called when master send a data on the serial port. If you don't
+				want to call a function set NULL. </FONT></FONT>
+				</P>
+				<P><FONT FACE="times, serif"><FONT SIZE=4>There is a predefined
+				function to print the character sent : <FONT FACE="courier, monospace">Mb_snd_print().</FONT>
+				See below to know more about it.</FONT></FONT></P>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=252>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4><FONT FACE="courier, monospace">ptr_function_receive</FONT> </FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=848>
+				<P STYLE="margin-bottom: 0cm"><FONT FACE="times, serif"><FONT SIZE=4>function
+				called when master receive a data from the serial port. If you
+				don't want to call a function set NULL. </FONT></FONT>
+				</P>
+				<P><FONT FACE="times, serif"><FONT SIZE=4>There is a predefined
+				function to print the character received : <FONT FACE="courier, monospace">Mb_rcv_print().</FONT>See
+				below to know more about it.</FONT></FONT></P>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE>
+
+<FONT FACE="times, serif"><FONT SIZE=4>The <FONT FACE="courier, monospace">Mb_master()</FONT> function compute alone the packet to send, according to the setting above. The function send the packet and wait the </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>slave answer during  the timeout time. If the slave answer before the end of the timeout time, the master function check the slave answered packet, </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>and in the case there isn't failure write data in  <FONT FACE="courier, monospace">data_out[</FONT>] and return the value 0. </FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>If you make an error in the setting off the <FONT FACE="courier, monospace">Mbm_trame</FONT> struct the function return -1 and send nothing.</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>If there is noise on the line, or the slave answer bad data, or the control of the crc16 in the slave packet is wrong, the function return -2 and store </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>nothing in <FONT FACE="courier, monospace">data_out[]</FONT>.</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>If this isn't the right slave who answered, the function return -4 and do nothing with packet received.</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>If the slave don&quot;t answer before the end of the timeout, master  function return -3.</FONT></FONT>
+
+
+
+
+
+
+
+<A NAME="3"></A><FONT COLOR="#dc2300"><FONT FACE="times, serif"><FONT SIZE=6 STYLE="font-size: 28pt"><B>3. Slave</B></FONT></FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Using slave function is easier as master. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>The slave function work with a modbus database in 16 bits data defined by the libmodbus : <FONT FACE="courier, monospace">int *Mbs_data;</FONT></FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>Before using slave function you need to allocate memory area to this pointer with<FONT FACE="courier, monospace"> malloc()</FONT>. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>For example if you want a database of 1000 byte write at the beginning of your program :</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>    <FONT FACE="courier, monospace">Mbs_data = (int *) malloc( 1000 * sizeof(int))</FONT>;</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Now you can launch the slave function with :</FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>        void Mb_slave(int device,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                int slave,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                void *ptr_function_send,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                void *ptr_function_receive,</FONT></FONT>
+<FONT FACE="courier, monospace"><FONT SIZE=4>                void *ptr_function_end);</FONT></FONT></PRE>
+<TABLE WIDTH=1125 BORDER=1 CELLPADDING=4 CELLSPACING=3>
+	<COL WIDTH=256>
+	<COL WIDTH=842>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=256>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>device</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=842>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>indicate the device descriptor returned by <FONT FACE="courier, monospace">Mb_open_device()</FONT></FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=256>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>slave</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=842>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4> indicate the slave number</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=256>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>ptr_function_send</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=842>
+				<P STYLE="margin-bottom: 0cm"><FONT FACE="times, serif"><FONT SIZE=4>is
+				a function called when slave send a data on the serial port. If
+				you don't want to call a function set</FONT></FONT></P>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>NULL. There is a predefined function to print the character sent : <FONT FACE="courier, monospace">Mb_snd_print()</FONT>. See below to know more about it.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=256>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>ptr_function_receive</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=842>
+				<P STYLE="margin-bottom: 0cm"><FONT FACE="times, serif"><FONT SIZE=4>is
+				a function called when slave receive a data from the serial port.
+				If you don't want to call a</FONT></FONT></P>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>function set NULL. There is a predefined function to print the character received : <FONT FACE="courier, monospace">Mb_rcv_print()</FONT>.</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>See below to know more about it.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=256>
+				<PRE><FONT FACE="courier, monospace"><FONT SIZE=4>ptr_function_end</FONT></FONT></PRE>
+			</TD>
+			<TD WIDTH=842>
+				<PRE><FONT FACE="times, serif"><FONT SIZE=4>is a function called when slave finish to send answer to the master. If you don't want to call a function set NULL.</FONT></FONT></PRE>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE>
+<FONT FACE="times, serif"><FONT SIZE=4>The slave function wait data from the serial port. When master send a byte equal to his slave number, the slave read all the packet, </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>check the crc16 and if all is right write or read modbus datamap(<FONT FACE="courier, monospace">Mbs_data[]</FONT>) according to the master request, compute and </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>send answer.</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>This function make a thread for running and to wait data from the serial port in an another task. That way calling <FONT FACE="courier, monospace">Mb_slave()</FONT> </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>is very quick and the main program continue his way. So you can work with the modbus datamap. It's of course possible to </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>write and read in <FONT FACE="courier, monospace">Mbs_data[] </FONT>during the execution of the <FONT FACE="courier, monospace">Mbs_slave()</FONT> function.</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>You can know the pid of the slave function. It's stored in a integer defined by the libmodbus : int <FONT FACE="courier, monospace">Mbs_pid</FONT>;</FONT></FONT>
+
+
+
+
+<FONT FACE="times, serif"><FONT SIZE=4>To stop the slave function you can call :</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>        <FONT FACE="courier, monospace">void Mb_slave_stop(void);</FONT></FONT></FONT>
+
+
+<FONT FACE="times, serif"><FONT SIZE=4>This function stop the slave function and clean all threads. After this function you can recall the Mb_slave() without problems. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>Be careful ! Don't launch several Mb_slave() function in the same time, because there will be a mix between data of both </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>functions and cause wrong data and also bugs.</FONT></FONT>
+
+
+
+
+<A NAME="4"></A><FONT COLOR="#dc2300"><FONT FACE="times, serif"><FONT SIZE=6 STYLE="font-size: 28pt"><B>4. Misc.</B></FONT></FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>int Mb_verbose;</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>To debug your program - and the library :) - you can switch on Mb_verbose to 1. This integer is defined by the libmodbus. </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>Set to 1 indicate master and slave function to write everything about the communication on the standard output </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>(usually your screen).If you don't use this integer master and slave are automatically without verbose.</FONT></FONT>
+
+
+
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>int Mb_status;</FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>If you use slave function with the 0x07 modbus function, slave return status  of your program. This status is defined </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>by the libmodbus in a 16 bit variable. You can store every thing that you want in this data between 0 and 65535.</FONT></FONT>
+
+
+
+
+<FONT FACE="times, serif"><FONT SIZE=4>You can know the version of the libmodbus calling the function :</FONT></FONT>
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>                char *Mb_version(void);</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>Maybe one day there will be newest version...</FONT></FONT>
+
+
+
+
+<FONT FACE="times, serif"><FONT SIZE=4><B>Function pointer :</B></FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>When you launch master or slave you can indicate function to call when receive or send a data. In the libmodbus there is </FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>one function predefined for each action :</FONT></FONT>
+
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>                void Mb_rcv_print(unsigned char c);</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>This function print in the standard output : &quot;receiving byte -&gt;&quot; and the character in hexadecimal and decimal mode.</FONT></FONT>
+
+
+<FONT FACE="courier, monospace"><FONT SIZE=4>                void Mb_snd_print(unsigned char c);</FONT></FONT>
+
+<FONT FACE="times, serif"><FONT SIZE=4>This function print in the standard output : &quot;sending byte -&gt;&quot; and the character in hexadecimal and decimal mode.</FONT></FONT>
+
+
+<A NAME="5"></A><FONT COLOR="#dc2300"><FONT FACE="times, serif"><FONT SIZE=6 STYLE="font-size: 28pt"><B>5. Author</B></FONT></FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>This text wrote by Laurent LOPES and is under the GNU Public License.  You can see it in the COPYING file </FONT></FONT>
+<FONT SIZE=4><FONT FACE="times, serif">or on the web <A HREF="http://www.gnu.org/">http://www.gnu.org</A></FONT></FONT>
+<FONT FACE="times, serif"><FONT SIZE=4>If there is bug on the library or error on this document  please write me : <A HREF="mailto:pes@ree.fr">pes@ree.fr</A></FONT></FONT>
+</PRE>
+</BODY>
+</HTML>
