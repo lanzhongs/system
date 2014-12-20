@@ -1,10 +1,12 @@
 #include <modbus.h>
 #include <signal.h>
 
+
 int Mb_device;				/* device tu use */
 int Mbm_Pid_Child;		/* PID child used to read the slave answer */
 int Mbm_Pid_Sleep;		/* PID use to wait the end of the timeout */
 byte *Mbm_result;			/* byte readed on the serial port : answer of the slave */
+int fd_rx = -1;
 
 
 /************************************************************************************
@@ -57,17 +59,23 @@ int Csm_get_data(int len, int timeout)
 		fprintf(stderr,"in get data\n");
 	
 	t = (time(NULL) + ((timeout * 2)/1000));
-
+	fprintf(stderr,"xx---------------=%d--------------\n", Mb_device);
+	ioctl(fd_rx,LZHIO_REV_485,1);
+	ioctl(fd_rx,LZHIO_SEND_485,0);
 	for(i=0;i<(len);i++)
 	{
 		if(t < time(NULL))
 			return(0);
-
+		fprintf(stderr,"i %d---------------=%d--------------\n", i, Mb_device);
 		/* read data */
 		while(read(Mb_device,&read_data,1) == 0){
+			fprintf(stderr,"i %d---------------=%d--------------\n", i, Mb_device);
+
+		
 			if(t < time(NULL))
 				return(0);
 		}
+		fprintf(stderr,"b---------------=%d--------------\n", Mb_device);
 		/* store data to the slave answer packet */
 		Mbm_result[i]=read_data;
 		
@@ -75,6 +83,7 @@ int Csm_get_data(int len, int timeout)
 			fprintf(stderr,"receiving byte :0x%x %d (%d)\n",read_data,read_data,Mbm_result[i]);
 	  
 	}
+	fprintf(stderr,"xx---------------=%d--------------\n", Mb_device);
 	if (Mb_verbose)
 		fprintf(stderr,"receiving data done\n");
 	return(1);
@@ -197,11 +206,14 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
 {
 	int i;
 	int ret;
+	fprintf(stderr,"---------------=%d--------------\n", Mb_device);
 
 	Mbm_result = trame;
 	
 	if (Mb_verbose)
 		fprintf(stderr,"start writing \n");
+	ioctl(fd_rx,LZHIO_SEND_485,1);
+	ioctl(fd_rx,LZHIO_REV_485,0);
 	for(i=0;i<long_emit;i++)
 	{
 		/* send data */
@@ -213,8 +225,8 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
 
   if (Mb_verbose)
 		fprintf(stderr,"write ok\n");
-	Mb_tio.c_cc[VMIN]=0;
-	Mb_tio.c_cc[VTIME]=1;
+	//Mb_tio.c_cc[VMIN]=0;
+	//Mb_tio.c_cc[VTIME]=1;
 
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
@@ -223,8 +235,8 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
   
 	ret = Csm_get_data(longueur, timeout);
 
-	Mb_tio.c_cc[VMIN]=1;
-	Mb_tio.c_cc[VTIME]=0;
+	//Mb_tio.c_cc[VMIN]=1;
+	//Mb_tio.c_cc[VTIME]=0;
 
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
@@ -367,7 +379,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 	{
 		fprintf(stderr,"send packet length %d\n",long_emit);
 		for(i=0;i<long_emit;i++)
-			fprintf(stderr,"send packet[%d] = %0x\n",i,trame[i]);
+			fprintf(stderr,"send packet[%d] = %02x\n",i,trame[i]);
 	}
 	
 	/* comput length of the slave answer */
@@ -397,7 +409,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 	/* send packet & read answer of the slave
 		answer is stored in trame[] */
 
-
+	fprintf(stderr,"-----------len is %d----------\n",longueur);
 	for(i = 0;i < 4; i++){
 		if(Csm_send_and_get_result(trame,Mbtrame.timeout,long_emit,longueur)){
 			i = 1;

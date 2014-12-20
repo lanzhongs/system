@@ -6,7 +6,7 @@
 # Makefile for modbus 
 
 CC = arm-wrs-linux-gnueabi-armv6jel_vfp-uclibc_small-gcc
-
+AR = arm-wrs-linux-gnueabi-armv6jel_vfp-uclibc_small-ar
 NAME=libmodbus
 VERSION=0.0.4
 
@@ -15,7 +15,7 @@ CFLAGS	= -Wall -O3
 all: libmodbus
 
 libmodbus: commun.o  mbm.o
-	$(CC) $(CFLAGS) -o libmodbus.so commun.o  mbm.o -lpthread  -shared -I.
+	$(AR) rcs  libmodbus.a commun.o  mbm.o
 
 
 commun.o: commun.c modbus.h

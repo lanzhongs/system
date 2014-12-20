@@ -12,8 +12,16 @@
 #include <unistd.h>
 #include <termios.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
+
 
 #define VERSION "0.0.4"
+
+#define LZHIO_REV_485 				_IOW('Y',0x90,unsigned int)
+#define LZHIO_SEND_485 				_IOW('Y',0x91,unsigned int)
+#define ENABLE485 					(1)
+#define DISABLE485 					(0)
+#define RS485_DEV					"/dev/lzh"
 
 struct termios saved_tty_parameters;			/* old serial port setting (restored on close) */
 struct termios Mb_tio;								/* new serail port setting */
