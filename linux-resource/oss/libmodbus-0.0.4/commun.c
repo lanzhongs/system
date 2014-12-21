@@ -66,8 +66,8 @@ int Mb_calcul_crc(byte trame[],int n)
 				crc=crc^0xa001;
 		}
 	}
-	trame[n]=crc>>8;
-	trame[n+1]=crc&255;
+	trame[n]=crc&255;
+	trame[n+1]=crc>>8;
 	return crc;
 }
 /************************************************************************************
@@ -111,8 +111,9 @@ int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit
     perror("Open device failure\n") ;
     exit(-1) ;
   }
-  ioctl(fd_rx,LZHIO_REV_485,0);
-  ioctl(fd_rx,LZHIO_SEND_485,1);
+  ioctl(fd_rx,LZHIO_REV_485,ENABLE485);
+  ioctl(fd_rx,LZHIO_SEND_485,ENABLE485);
+  close(fd_rx);
   /* open port */
   fd = open(Mbc_port,O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY) ;
   if(fd<0)
@@ -225,8 +226,8 @@ int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit
   Mb_tio.c_cflag = Mb_tio.c_cflag | CLOCAL | CREAD;
   Mb_tio.c_oflag = 0;
   Mb_tio.c_lflag = 0; /*ICANON;*/
- // Mb_tio.c_cc[VMIN]=1;
-  //Mb_tio.c_cc[VTIME]=0;
+ Mb_tio.c_cc[VMIN]=1;
+  Mb_tio.c_cc[VTIME]=0;
 
   /* clean port */
   tcflush(fd, TCIFLUSH);

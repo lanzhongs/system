@@ -6,7 +6,6 @@ int Mb_device;				/* device tu use */
 int Mbm_Pid_Child;		/* PID child used to read the slave answer */
 int Mbm_Pid_Sleep;		/* PID use to wait the end of the timeout */
 byte *Mbm_result;			/* byte readed on the serial port : answer of the slave */
-int fd_rx = -1;
 
 
 /************************************************************************************
@@ -60,8 +59,7 @@ int Csm_get_data(int len, int timeout)
 	
 	t = (time(NULL) + ((timeout * 2)/1000));
 	fprintf(stderr,"xx---------------=%d--------------\n", Mb_device);
-	ioctl(fd_rx,LZHIO_REV_485,1);
-	ioctl(fd_rx,LZHIO_SEND_485,0);
+	
 	for(i=0;i<(len);i++)
 	{
 		if(t < time(NULL))
@@ -69,7 +67,7 @@ int Csm_get_data(int len, int timeout)
 		fprintf(stderr,"i %d---------------=%d--------------\n", i, Mb_device);
 		/* read data */
 		while(read(Mb_device,&read_data,1) == 0){
-			fprintf(stderr,"i %d---------------=%d--------------\n", i, Mb_device);
+			fprintf(stderr,"rd data 0x%02x---------------=%d--------------\n", read_data, Mb_device);
 
 		
 			if(t < time(NULL))
@@ -212,21 +210,24 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
 	
 	if (Mb_verbose)
 		fprintf(stderr,"start writing \n");
-	ioctl(fd_rx,LZHIO_SEND_485,1);
-	ioctl(fd_rx,LZHIO_REV_485,0);
-	for(i=0;i<long_emit;i++)
+	//for(i=0;i<long_emit;i++)
 	{
 		/* send data */
-		write(Mb_device,&trame[i],1);
+		write(Mb_device,trame,long_emit);
 		/* call pointer function if exist */
 		if(Mb_ptr_snd_data!=NULL)
-			(*Mb_ptr_snd_data)(trame[i]);
+			(*Mb_ptr_snd_data)(trame);
 	}
-
+{
+byte read_data;
+	//while(read(Mb_device,&read_data,1) == 0){
+	fprintf(stderr,"---------------=%d--read_data 0x%02x------------\n", Mb_device,read_data);
+		//}
+	}
   if (Mb_verbose)
 		fprintf(stderr,"write ok\n");
-	//Mb_tio.c_cc[VMIN]=0;
-	//Mb_tio.c_cc[VTIME]=1;
+	Mb_tio.c_cc[VMIN]=0;
+	Mb_tio.c_cc[VTIME]=1;
 
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
@@ -235,8 +236,8 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
   
 	ret = Csm_get_data(longueur, timeout);
 
-	//Mb_tio.c_cc[VMIN]=1;
-	//Mb_tio.c_cc[VTIME]=0;
+	Mb_tio.c_cc[VMIN]=1;
+	Mb_tio.c_cc[VTIME]=0;
 
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
