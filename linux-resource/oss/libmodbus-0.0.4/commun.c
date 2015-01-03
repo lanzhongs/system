@@ -104,18 +104,9 @@ device descriptor
 int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit_l, int Mbc_bit_s)
 {
   int fd;
-  int fd_rx=-1;
-  fd_rx = open(RS485_DEV,O_RDWR);
-  if(fd_rx<0)
-  {
-    perror("Open device failure\n") ;
-    exit(-1) ;
-  }
-  ioctl(fd_rx,LZHIO_REV_485,ENABLE485);
-  ioctl(fd_rx,LZHIO_SEND_485,ENABLE485);
-  close(fd_rx);
+ 
   /* open port */
-  fd = open(Mbc_port,O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY) ;
+  fd = open(Mbc_port,O_RDWR | O_NOCTTY | O_NDELAY) ;
   if(fd<0)
   {
     perror("Open device failure\n") ;
@@ -213,26 +204,23 @@ int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit
         break;
      case 0:
      default:
-//        Mb_tio.c_iflag = IGNPAR | ICRNL;
         Mb_tio.c_iflag = IGNPAR;
-//        Mb_tio.c_iflag &= ~ICRNL;
         break;
   }
   Mb_tio.c_iflag &= ~ICRNL;
-
   if (Mbc_bit_s==2)
      Mb_tio.c_cflag = Mb_tio.c_cflag | CSTOPB;
-     
+#if 1  
   Mb_tio.c_cflag = Mb_tio.c_cflag | CLOCAL | CREAD;
   Mb_tio.c_oflag = 0;
-  Mb_tio.c_lflag = 0; /*ICANON;*/
+  Mb_tio.c_lflag = 0;
  Mb_tio.c_cc[VMIN]=1;
   Mb_tio.c_cc[VTIME]=0;
-
+#endif
   /* clean port */
   tcflush(fd, TCIFLUSH);
 
-  fcntl(fd, F_SETFL, FASYNC);
+  //fcntl(fd, F_SETFL, FASYNC);
   /* activate the settings port */
   if (tcsetattr(fd,TCSANOW,&Mb_tio) <0)
   {
@@ -242,7 +230,7 @@ int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit
   
   /* clean I & O device */
   tcflush(fd,TCIOFLUSH);
-  
+
    if (Mb_verbose)
    {
       printf("setting ok:\n");
@@ -252,6 +240,7 @@ int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit
       printf("stop bits     %d\n",Mbc_bit_s);
       printf("parity        %d\n",Mbc_parity);
    }
+   usleep(5000);
    return fd ;
 }
 

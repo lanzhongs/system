@@ -12,12 +12,12 @@ int main()
    int data_in[256];
    int data_out[256];
    char data[256];
-printf("line:%d\n");
-   /* open device */
-   device=Mb_open_device("/dev/ttyO0",9600,0,8,1);
 
+   printf("build:%s,%s\n",__TIME__,__DATE__);
    /* print debugging informations */
    Mb_verbose=1;
+   /* open device */
+   device=Mb_open_device("/dev/ttyO0",9600,0,8,1);
 
    trame.device = device;
    trame.function=3;			/* send data */
@@ -25,8 +25,7 @@ printf("line:%d\n");
    trame.address=0;
    trame.length=6;
    trame.timeout=10000;
-
-
+   
    result=Mb_master(trame,data_in,data_out,NULL,NULL);
    /* return 0 if ok */
    if (result<0)
