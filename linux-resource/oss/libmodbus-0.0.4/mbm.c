@@ -1,195 +1,374 @@
 #include <modbus.h>
-#include <signal.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <termios.h>
+
+/* master main function :
+- trame informations
+- data in
+- data out
+- pointer function called when master send a data on serial port (can be NULL if not use)
+- pointer function called when master receive a data on serial port (can be NULL if not use)*/
+int Mb_master(Mbm_trame, int [] , int []);
+
+/* commun functions */
+int Mb_open_device(char [], int , int , int ,int );		/* open device and configure it */
+void Mb_close_device();												/* close device and restore old parmeters */
+int Mb_test_crc(unsigned char[] ,int, int);						/* check crc16 */
+int Mb_calcul_crc(unsigned char[] ,int, int);						/* compute crc16 */
 
 
-int Mb_device;				/* device tu use */
-int Mbm_Pid_Child;		/* PID child used to read the slave answer */
-int Mbm_Pid_Sleep;		/* PID use to wait the end of the timeout */
+int Mb_device = -1;				/* device tu use */
 byte *Mbm_result;			/* byte readed on the serial port : answer of the slave */
+int revert = 0;				/* flip crc sequence */
+int getSenVal(Mbm_trame trame, Sen_value *senInfo, int data_in[], int data_out[])
+{
+	int result = -1;
+	int output[128];
+	
+	if(Mb_device == -1)
+
+	{
+		/* open device */
+   		Mb_device = Mb_open_device("/dev/ttyO0",9600,0,8,1);
+		
+	}
+	if(Mb_device == -1)
+	{
+		senInfo->state = result;
+		return result;
+	}
+	result=Mb_master(trame,data_in,output);
+   /* return 0 if ok */
+   if (result<0)
+   {
+      if (result==-1) printf("error : unknow function\n");
+      if (result==-2) printf("crc error\n");
+      if (result==-3) printf("timeout error\n");
+      if (result==-4) printf("error : bad slave answer\n");
+   }
+   else
+   {
+	  senInfo->state = 0;
+	  printf("ok\n");
+   }
+   	if(data_out)
+		memcpy(data_out, output, 32);
+   senInfo->state = result;
+	return result;
+}
+
+int setSenVal(Mbm_trame trame, Sen_value *senInfo)
+{
+
+	return 0;
+}
+
+
+int contrlSen(Mbm_trame trame, void *pBuf)
+{
+	
+		return 0;
+}
+
 
 /************************************************************************************
-		Mbm_get_data : thread reading data on the serial port
+		Mb_test_crc : check the crc of a packet
 *************************************************************************************
 input :
 -------
-len	:	number of data to read;
+trame  : packet with is crc
+n      : lenght of the packet without tht crc
+                              ^^^^^^^
+answer :
+--------
+1 = crc fealure
+0 = crc ok
+************************************************************************************/
+int Mb_test_crc(byte trame[],int n, int revert)
+{
+	unsigned int crc, i, j, carry_flag, a;
+	crc = 0xffff;
+	for (i = 0; i < n; i++)
+	{
+		crc = crc ^ trame[i];
+		for (j = 0; j < 8; j++)
+		{
+			a = crc;
+			carry_flag = a & 0x0001;
+			crc = crc >> 1;
+			if (carry_flag == 1)
+				crc = crc ^ 0xa001;
+		}
+	}
+   if (Mb_verbose)
+      printf("test crc %0x %0x\n", (crc & 255),(crc >> 8));
+   if(!revert)
+   {
+	if ((trame[n+1] != (crc & 0xff)) || (trame[n] != (crc >> 8)))
+      return 1;
+	else
+      return 0;
+   }
+   else
+   {
+	   if ((trame[n+1] != (crc >> 8)) || (trame[n] != (crc & 0xff)))
+		 return 1;
+	   else
+      	 return 0;
+   }
+ 
+}
+
+/************************************************************************************
+		Mb_calcul_crc : compute the crc of a packet and put it at the end
+*************************************************************************************
+input :
+-------
+trame  : packet with is crc
+n      : lenght of the packet without tht crc
+                              ^^^^^^^
+answer :
+--------
+crc
+************************************************************************************/
+int Mb_calcul_crc(byte trame[],int n, int revert)
+{
+	unsigned int crc,i,j,carry_flag,a;
+	crc = 0xffff;
+	for (i = 0; i < n; i++)
+	{
+		crc = crc ^ trame[i];
+		for (j = 0; j < 8; j++)
+		{
+			a = crc;
+			carry_flag = a & 0x0001;
+			crc = crc >> 1;
+			if (carry_flag == 1)
+				crc = crc ^ 0xa001;
+		}
+		
+	}
+	if(!revert)
+	{
+		trame[n]=crc>>8;
+		trame[n+1]=crc & 0xff;
+	}
+	else
+	{
+		trame[n] = crc & 0xff;
+		trame[n+1] = crc >> 8;
+
+	}
+	return crc;
+}
+/************************************************************************************
+		Mb_close_device : Close the device
+*************************************************************************************
+input :
+-------
+Mb_device : device descriptor
 
 no output
 ************************************************************************************/
-void Mbm_get_data(int *len )
+void Mb_close_device(int Mb_device)
 {
-	int i;
-	byte read_data;
+  close(Mb_device);
+}
 
-	Mbm_Pid_Child=getpid();
+/************************************************************************************
+		Mb_open_device : open the device
+*************************************************************************************
+input :
+-------
+Mbc_port   : string with the device to open (/dev/ttyS0, /dev/ttyS1,...)
+Mbc_speed  : speed (baudrate)
+Mbc_parity : 0=don't use parity, 1=use parity EVEN, -1 use parity ODD
+Mbc_bit_l  : number of data bits : 7 or 8 	USE EVERY TIME 8 DATA BITS
+Mbc_bit_s  : number of stop bits : 1 or 2    ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+answer  :
+---------
+device descriptor
+************************************************************************************/
+int Mb_open_device(char Mbc_port[20], int Mbc_speed, int Mbc_parity, int Mbc_bit_l, int Mbc_bit_s)
+{
+  int fd;
+ 
+  /* open port */
+  fd = open(Mbc_port,O_RDWR | O_NOCTTY | O_NONBLOCK) ;
+  if(fd<0)
+  {
+    perror("Open device failure\n") ;
+    exit(-1) ;
+  }
 
-		if (Mb_verbose)
-			fprintf(stderr,"starting receiving data, total length : %d \n",*len);
-	for(i=0;i<(*len);i++)
-	{
-		/* read data */
-		read(Mb_device,&read_data,1);
+  /* settings port */
+  bzero(&Mb_tio,sizeof(&Mb_tio));
 
-		/* store data to the slave answer packet */
-		Mbm_result[i]=read_data;
-		
-		/* call the pointer function if exist */
-		if(Mb_ptr_rcv_data!=NULL)
-			(*Mb_ptr_rcv_data)(read_data);
-		if (Mb_verbose)
-			fprintf(stderr,"receiving byte :0x%x %d (%d)\n",read_data,read_data,Mbm_result[i]);
-	}
-	if (Mb_verbose)
-		fprintf(stderr,"receiving data done\n");
+  switch (Mbc_speed)
+  {
+     case 0:
+        Mb_tio.c_cflag = B0;
+        break;
+     case 50:
+        Mb_tio.c_cflag = B50;
+        break;
+     case 75:
+        Mb_tio.c_cflag = B75;
+        break;
+     case 110:
+        Mb_tio.c_cflag = B110;
+        break;
+     case 134:
+        Mb_tio.c_cflag = B134;
+        break;
+     case 150:
+        Mb_tio.c_cflag = B150;
+        break;
+     case 200:
+        Mb_tio.c_cflag = B200;
+        break;
+     case 300:
+        Mb_tio.c_cflag = B300;
+        break;
+     case 600:
+        Mb_tio.c_cflag = B600;
+        break;
+     case 1200:
+        Mb_tio.c_cflag = B1200;
+        break;
+     case 1800:
+        Mb_tio.c_cflag = B1800;
+        break;
+     case 2400:
+        Mb_tio.c_cflag = B2400;
+        break;
+     case 4800:
+        Mb_tio.c_cflag = B4800;
+        break;
+     case 9600:
+        Mb_tio.c_cflag = B9600;
+        break;
+     case 19200:
+        Mb_tio.c_cflag = B19200;
+        break;
+     case 38400:
+        Mb_tio.c_cflag = B38400;
+        break;
+     case 57600:
+        Mb_tio.c_cflag = B57600;
+        break;
+     case 115200:
+        Mb_tio.c_cflag = B115200;
+        break;
+     default:
+        Mb_tio.c_cflag = B9600;
+  }
+  switch (Mbc_bit_l)
+  {
+     case 7:
+        Mb_tio.c_cflag = Mb_tio.c_cflag | CS7;
+        break;
+     case 8:
+     default:
+        Mb_tio.c_cflag = Mb_tio.c_cflag | CS8;
+        break;
+  }
+  switch (Mbc_parity)
+  {
+     case 1:
+        Mb_tio.c_cflag = Mb_tio.c_cflag | PARENB;
+        break;
+     case -1:
+        Mb_tio.c_cflag = Mb_tio.c_cflag | PARENB | PARODD;
+        break;
+     case 0:
+     default:
+        Mb_tio.c_iflag = IGNPAR;
+        break;
+  }
+  Mb_tio.c_iflag &= ~ICRNL;
+  if (Mbc_bit_s==2)
+     Mb_tio.c_cflag = Mb_tio.c_cflag | CSTOPB;
+#if 1  
+  Mb_tio.c_cflag = Mb_tio.c_cflag | CLOCAL | CREAD;
+  Mb_tio.c_oflag = 0;
+  Mb_tio.c_lflag = 0;
+#endif
+  /* clean port */
+  tcflush(fd, TCIFLUSH);
 
-	Mbm_Pid_Child=0;
+  //fcntl(fd, F_SETFL, FASYNC);
+  /* activate the settings port */
+  if (tcsetattr(fd,TCSANOW,&Mb_tio) <0)
+  {
+    perror("Can't set terminal parameters ");
+    return -1 ;
+  }
+  
+  /* clean I & O device */
+  tcflush(fd,TCIOFLUSH);
 
+   if (Mb_verbose)
+   {
+      printf("setting ok:\n");
+      printf("device        %s\n",Mbc_port);
+      printf("speed         %d\n",Mbc_speed);
+      printf("data bits     %d\n",Mbc_bit_l);
+      printf("stop bits     %d\n",Mbc_bit_s);
+      printf("parity        %d\n",Mbc_parity);
+   }
+   return fd ;
+}
+
+char *Mb_version(void)
+{
+   return VERSION;
 }
 
 int Csm_get_data(int len, int timeout)
 {
-	int i;
+	int i,flag;
 	byte read_data;
-	time_t t;
-
+	fd_set  rdfds;
+	struct timeval tv;
+	int ret;
+	
+	flag =i= 0;
 	if (Mb_verbose)
 		fprintf(stderr,"in get data\n");
-	usleep(20000);
-	t = (time(NULL) + ((timeout * 2)/1000));
-	
-	for(i=0;i<(len);i++)
-	{
-		if(t < time(NULL))
-			return(0);
-		/* read data */
-		while(read(Mb_device,&read_data,1) == 0){
-				if(t < time(NULL))
-				return(0);
+
+	do{
+		tv.tv_sec = timeout;
+		tv.tv_usec = 0;
+		FD_ZERO(&rdfds);
+		FD_SET(Mb_device,&rdfds);
+		ret = select(Mb_device+1, &rdfds, NULL, NULL, &tv);
+		if(ret < 0) 
+			perror("select");
+		else if(ret > 0){
+			if(read(Mb_device, &read_data, 1) == 1){
+				if(!flag && !read_data)
+					continue;
+				flag = 1;
+				Mbm_result[i]=read_data;
+				if (Mb_verbose)
+					fprintf(stderr,"receiving byte :i=%d data=0x%02x \n",i,read_data);
+				len--;
+				i++;
+			}
+		}else{
+			printf("timeout\n");
+			break;//timeout;
 		}
-		/* store data to the slave answer packet */
-		Mbm_result[i]=read_data;
-		
-		if (Mb_verbose)
-			fprintf(stderr,"receiving byte :0x%x %d (%d)\n",read_data,read_data,Mbm_result[i]);
-	  
-	}
+	}while(len);
+
 	if (Mb_verbose)
 		fprintf(stderr,"receiving data done\n");
 	return(1);
-}
-
-
-/************************************************************************************
-		Mbm_sleep : thread wait timeout
-*************************************************************************************
-input :
--------
-timeout : duduration of the timeout in ms
-
-no output
-************************************************************************************/
-void Mbm_sleep(int *timeout)
-{
-	Mbm_Pid_Sleep=getpid();
-	if (Mb_verbose)
-		fprintf(stderr,"sleeping %d ms\n",*timeout);
-
-	usleep(*timeout*1000);
-
-	Mbm_Pid_Sleep=0;
-	if (Mb_verbose)
-		fprintf(stderr,"Done sleeping %d ms\n",*timeout);
-
-}
-
-/************************************************************************************
-		Mbm_send_and_get_result : send data, and wait the answer of the slave
-*************************************************************************************
-input :
--------
-trame	  : packet to send
-timeout	: duduration of the timeout in ms
-long_emit : length of the packet to send
-longueur  : length of the packet to read
-
-answer :
---------
-0			: timeout failure
-1			: answer ok
-************************************************************************************/
-int Mbm_send_and_get_result(byte trame[], int timeout, int long_emit, int longueur)
-{
-	int i,stat1=-1,stat2=-1;
-
-	pthread_t thread1,thread2;
-	Mbm_result = (unsigned char *) malloc(longueur*sizeof(unsigned char));
-
-	/* clean port */
-	tcflush(Mb_device, TCIFLUSH);
-
-	/* create 2 threads for read data and to wait end of timeout*/
-	pthread_create(&thread2, NULL,(void*)&Mbm_sleep,&timeout);
-	pthread_detach(thread2);
-	pthread_create(&thread1, NULL,(void*)&Mbm_get_data,&longueur);
-	pthread_detach(thread1);
-
-	if (Mb_verbose)
-		fprintf(stderr,"start writing \n");
-	for(i=0;i<long_emit;i++)
-	{
-		/* send data */
-		write(Mb_device,&trame[i],1);
-		/* call pointer function if exist */
-		if(Mb_ptr_snd_data!=NULL)
-			(*Mb_ptr_snd_data)(trame[i]);
-	}
-
-  if (Mb_verbose)
-		fprintf(stderr,"write ok\n");
-
-	do {
-
-		if (Mbm_Pid_Child!=0)
-			/* kill return 0 if the pid is running or -1 if the pid don't exist */
-			stat1=0;
-		else
-			stat1=-1;
-
-		if (Mbm_Pid_Sleep!=0)
-			stat2=0;
-		else
-			stat2=-1;
-
-		/* answer of the slave terminate or and of the timeout */
-		if (stat1==-1 || stat2==-1) 
-			break;
-		usleep(timeout);
-
-	} while(1); 
-	if (Mb_verbose)
-	{
-		fprintf(stderr,"pid reading %d return %d\n",Mbm_Pid_Child,stat1);
-		fprintf(stderr,"pid timeout %d return %d\n",Mbm_Pid_Sleep,stat2);
-	}
-
-	/* stop both childs */
-	Mbm_Pid_Child=0;
-	Mbm_Pid_Sleep=0;
-	pthread_cancel(thread1);
-	pthread_cancel(thread2);
-	/* error : timeout fealure */
-	if (stat1==0)
-	{
-		free(Mbm_result);
-		return 0;
-	}
-	/* ok : store the answer packet in the data trame */
-	for (i=0;i<=longueur;i++)
-		trame[i]=Mbm_result[i];
-	
-	free(Mbm_result);
-	return 1;
 }
 		
 int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, int longueur)
@@ -200,27 +379,18 @@ int Csm_send_and_get_result(unsigned char trame[], int timeout, int long_emit, i
 	
 	if (Mb_verbose)
 		fprintf(stderr,"start writing \n");
-	//for(i=0;i<long_emit;i++)
-	{
-		/* send data */
-		write(Mb_device,trame,long_emit);
-		/* call pointer function if exist */
-		if(Mb_ptr_snd_data!=NULL)
-			(*Mb_ptr_snd_data)(trame);
-	}
+
+	/* send data */
+	write(Mb_device,trame,long_emit);
 
   if (Mb_verbose)
 		fprintf(stderr,"write ok\n");
-	Mb_tio.c_cc[VMIN]=1;
-	Mb_tio.c_cc[VTIME]=0;
+
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
 		return 0;
 	}
 	ret = Csm_get_data(longueur, timeout);
-
-	Mb_tio.c_cc[VMIN]=1;
-	Mb_tio.c_cc[VTIME]=0;
 	if (tcsetattr(Mb_device,TCSANOW,&Mb_tio) <0) {
 		perror("Can't set terminal parameters ");
 		return 0 ;
@@ -255,20 +425,30 @@ answer :
 -3 : timeout error
 -4 : answer come from an other slave
 *************************************************************************************/
-int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, void *ptrfoncrcv)
+int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[])
 {
 	int i,longueur,long_emit;
 	int slave, function, adresse, nbre;
 	byte trame[256];
 
-	Mb_device=Mbtrame.device;
 	slave=Mbtrame.slave;
 	function=Mbtrame.function;
 	adresse=Mbtrame.address;
 	nbre=Mbtrame.length;
-	Mb_ptr_snd_data=ptrfoncsnd;
-	Mb_ptr_rcv_data=ptrfoncrcv;
-		
+	
+	if((slave >= 1) && (slave <= 32))
+	{
+		revert = 1;
+	}			
+	else if((slave >= 33) && (slave <= 64))
+	{
+		revert = 0;
+	}
+	else if((slave >= 65) && (slave <= 96))
+	{
+		revert = 0;
+	}
+	
 	switch (function)
 	{
 		case 0x03:
@@ -281,7 +461,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			trame[4]=nbre>>8;
 			trame[5]=nbre&0xFF;
 			/* comput crc */
-			Mb_calcul_crc(trame,6);
+			Mb_calcul_crc(trame,6,revert);
 			/* comput length of the packet to send */
 			long_emit=8;
 			break;
@@ -294,7 +474,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			trame[4]=data_in[0]>>8;
 			trame[5]=data_in[0]&0xFF;
 			/* comput crc */
-			Mb_calcul_crc(trame,6);
+			Mb_calcul_crc(trame,6,revert);
 			/* comput length of the packet to send */
 			long_emit=8;
 			break;
@@ -308,7 +488,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			trame[4]=data_in[0]>>8;
 			trame[5]=data_in[0]&0xFF;
 			/* comput crc */
-			Mb_calcul_crc(trame,6);
+			Mb_calcul_crc(trame,6,revert);
 			/* comput length of the packet to send */
 			long_emit=8;
 			break;
@@ -318,7 +498,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			trame[0]=slave;
 			trame[1]=function;
 			/* comput crc */
-			Mb_calcul_crc(trame,2);
+			Mb_calcul_crc(trame,2,revert);
 			/* comput length of the packet to send */
 			long_emit=4;
 			break;
@@ -331,7 +511,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			trame[3]=0;
 			trame[4]=0;
 			trame[5]=0;
-			Mb_calcul_crc(trame,6);
+			Mb_calcul_crc(trame,6,revert);
 			/* comput length of the packet to send */
 			long_emit=8;
 			break;
@@ -351,7 +531,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 				trame[8+i*2]=data_in[i]&0xFF;
 			}
 			/* comput crc */
-			Mb_calcul_crc(trame,7+nbre*2);
+			Mb_calcul_crc(trame,7+nbre*2,revert);
 			/* comput length of the packet to send */
 			long_emit=(nbre*2)+9;
 			break;
@@ -370,7 +550,19 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 	{
 		case 0x03:
 		case 0x04:
-			longueur=5+(nbre*2);
+			if((slave >= 1) && (slave <= 32))
+			{
+				revert = 1;
+				longueur = 17;
+			}			
+			else if((slave >= 33) && (slave <= 64))
+			{
+				longueur = 18;
+			}
+			else if((slave >= 65) && (slave <= 96))
+			{
+				longueur = 19;
+			}
 			break;
 		
 		case 0x05:
@@ -420,11 +612,17 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x03 && trame[1]!=0x04)
 				return -2;
-			if (Mb_test_crc(trame,3+(nbre*2)))
+			if (Mb_test_crc(trame, longueur-2, revert))
 				return -2;
 			/* data are ok */
 			if (Mb_verbose)
 				fprintf(stderr,"Reader data \n");
+			for(i=0;i<18;i++){
+				if(isdigit(trame[i]) || (trame[i]== '.') ||
+					(trame[i] == ' '))
+				printf("%c",trame[i]);
+			}
+			printf("\n");
 			for (i=0;i<nbre;i++)
 			{
 				data_out[i]=(trame[3+(i*2)]<<8)+trame[4+i*2];
@@ -437,7 +635,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x05)
 				return -2;
-			if (Mb_test_crc(trame,6))
+			if (Mb_test_crc(trame,6,revert))
 				return -2;
 			/* data are ok */
 			if (Mb_verbose)
@@ -448,7 +646,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x06)
 				return -2;
-			if (Mb_test_crc(trame,6))
+			if (Mb_test_crc(trame,6,revert))
 				return -2;
 			/* data are ok */
 			if (Mb_verbose)
@@ -459,7 +657,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x07)
 				return -2;
-			if (Mb_test_crc(trame,3))
+			if (Mb_test_crc(trame,3,revert))
 				return -2;
 			/* data are ok */
 			data_out[0]=trame[2];	/* store status in data_out[0] */
@@ -471,7 +669,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x08)
 				return -2;
-			if (Mb_test_crc(trame,6))
+			if (Mb_test_crc(trame,6,revert))
 				return -2;
 			/* data are ok */
 			if (Mb_verbose)
@@ -482,7 +680,7 @@ int Mb_master(Mbm_trame Mbtrame,int data_in[], int data_out[],void *ptrfoncsnd, 
 			/* test received data */
 			if (trame[1]!=0x10)
 				return -2;
-			if (Mb_test_crc(trame,6))
+			if (Mb_test_crc(trame,6,revert))
 				return -2;
 			/* data are ok */
 			if (Mb_verbose)
